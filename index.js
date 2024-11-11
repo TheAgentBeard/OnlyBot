@@ -79,7 +79,7 @@ bot.onMessage(async (channel, user, message, self) => {
     const currentTime = Date.now();
     const elapsedTime = (currentTime - lastResponseTime) / 1000; // Time in seconds
 
-    if (ENABLE_CHANNEL_POINTS === 'true' && user['msg-id'] === 'highlighted-message') {
+    if (ENABLE_CHANNEL_POINTS === 'true' && user['msg-id'] === 'onlytomai') {
         console.log(`Highlighted message: ${message}`);
         if (elapsedTime < COOLDOWN_DURATION) {
             bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds before sending another message.`);

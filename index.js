@@ -37,7 +37,7 @@ if (!OPENAI_API_KEY) {
 
 const commandNames = COMMAND_NAME.split(',').map(cmd => cmd.trim().toLowerCase());
 const channels = CHANNELS.split(',').map(channel => channel.trim());
-const maxLength = 399;
+const maxLength = 1000;
 let fileContext = 'You are a helpful Twitch Chatbot.';
 let lastUserMessage = '';
 let lastResponseTime = 0; // Track the last response time

@@ -83,7 +83,7 @@ export class TwitchBot {
 
     async sayTTS(channel, text, userstate) {
         // Check if TTS is enabled
-        if (this.enable_tts !== 'true') {
+        if (this.enable_channel_points !== 'true') {
             return;
         }
         try {

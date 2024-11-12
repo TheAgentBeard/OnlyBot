@@ -28,7 +28,7 @@ const COMMAND_NAME = process.env.COMMAND_NAME || '!gpt';
 const CHANNELS = process.env.CHANNELS || 'oSetinhas,jones88';
 const SEND_USERNAME = process.env.SEND_USERNAME || 'true';
 const ENABLE_TTS = process.env.ENABLE_TTS || 'false';
-const ELEVENLABS_API_KEY = process.env.elevenlabs_api_key || 'false';
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || 'false';
 const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS || 'false';
 const COOLDOWN_DURATION = parseInt(process.env.COOLDOWN_DURATION, 10) || 10; // Cooldown duration in seconds
 

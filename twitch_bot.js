@@ -1,10 +1,10 @@
-// Import tmi.js module
+// Import tmi.js und axios für HTTP-Anfragen
 import tmi from 'tmi.js';
-import OpenAI from 'openai';
+import axios from 'axios'; // Hier verwenden wir axios für HTTP-Anfragen
 import { promises as fsPromises } from 'fs';
 
 export class TwitchBot {
-    constructor(bot_username, oauth_token, channels, openai_api_key, enable_tts) {
+    constructor(bot_username, oauth_token, channels, elevenlabs_api_key, enable_tts) {
         this.channels = channels;
         this.client = new tmi.client({
             connection: {
@@ -17,40 +17,32 @@ export class TwitchBot {
             },
             channels: this.channels
         });
-        this.openai = new OpenAI({apiKey: openai_api_key});
+        this.elevenlabsApiKey = elevenlabs_api_key;
         this.enable_tts = enable_tts;
     }
 
     addChannel(channel) {
-        // Check if channel is already in the list
         if (!this.channels.includes(channel)) {
             this.channels.push(channel);
-            // Use join method to join a channel instead of modifying the channels property directly
             this.client.join(channel);
         }
     }
 
     connect() {
-        // Use async/await syntax to handle promises
         (async () => {
             try {
-                // Await for the connection to be established
                 await this.client.connect();
             } catch (error) {
-                // Handle any errors that may occur
                 console.error(error);
             }
         })();
     }
 
     disconnect() {
-        // Use async/await syntax to handle promises
         (async () => {
             try {
-                // Await for the connection to be closed
                 await this.client.disconnect();
             } catch (error) {
-                // Handle any errors that may occur
                 console.error(error);
             }
         })();
@@ -69,13 +61,10 @@ export class TwitchBot {
     }
 
     say(channel, message) {
-        // Use async/await syntax to handle promises
         (async () => {
             try {
-                // Await for the message to be sent
                 await this.client.say(channel, message);
             } catch (error) {
-                // Handle any errors that may occur
                 console.error(error);
             }
         })();
@@ -86,101 +75,91 @@ export class TwitchBot {
         if (this.enable_tts !== 'true') {
             return;
         }
+        
         try {
-            // Make a call to the OpenAI TTS model
-            const mp3 = await this.openai.audio.speech.create({
-                model: 'tts-1',
-                voice: 'alloy',
-                input: text,
-            });
+            // Anfrage an die ElevenLabs TTS-API
+            const response = await axios.post(
+                'https://api.elevenlabs.io/v1/text-to-speech/generate', 
+                {
+                    voice: 'en_us_male', // Beispiel-Stimme, du kannst hier eine andere auswählen
+                    text: text
+                }, 
+                {
+                    headers: {
+                        'Authorization': `Bearer ${this.elevenlabsApiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    responseType: 'arraybuffer' // Wir erwarten eine Audiodatei im Arraybuffer-Format
+                }
+            );
 
-            // Convert the mp3 to a buffer
-            const buffer = Buffer.from(await mp3.arrayBuffer());
-
-            // Save the buffer as an MP3 file
+            // Speichern der Audiodatei als MP3
+            const buffer = Buffer.from(response.data);
             const filePath = './public/file.mp3';
             await fsPromises.writeFile(filePath, buffer);
 
-            // Return the path of the saved audio file
+            // Gebe den Dateipfad der gespeicherten Audiodatei zurück
             return filePath;
         } catch (error) {
-            console.error('Error in sayTTS:', error);
+            console.error('Fehler bei TTS-Anfrage an ElevenLabs:', error);
         }
     }
 
     whisper(username, message) {
-        // Use async/await syntax to handle promises
         (async () => {
             try {
-                // Await for the message to be sent
                 await this.client.whisper(username, message);
             } catch (error) {
-                // Handle any errors that may occur
                 console.error(error);
             }
         })();
     }
 
     ban(channel, username, reason) {
-        // Use async/await syntax to handle promises
         (async () => {
             try {
-                // Await for the user to be banned
                 await this.client.ban(channel, username, reason);
             } catch (error) {
-                // Handle any errors that may occur
                 console.error(error);
             }
         })();
     }
 
     unban(channel, username) {
-        // Use async/await syntax to handle promises
         (async () => {
             try {
-                // Await for the user to be unbanned
                 await this.client.unban(channel, username);
             } catch (error) {
-                // Handle any errors that may occur
                 console.error(error);
             }
         })();
     }
 
     clear(channel) {
-        // Use async/await syntax to handle promises
         (async () => {
             try {
-                // Await for the chat to be cleared
                 await this.client.clear(channel);
             } catch (error) {
-                // Handle any errors that may occur
                 console.error(error);
             }
         })();
     }
 
     color(channel, color) {
-        // Use async/await syntax to handle promises
         (async () => {
             try {
-                // Await for the color to be changed
                 await this.client.color(channel, color);
             } catch (error) {
-                // Handle any errors that may occur
                 console.error(error);
             }
         })();
     }
 
     commercial(channel, seconds) {
-        // Use async/await syntax to handle promises
         (async () => {
             try {
-                // Await for the commercial to be played
                 await this.client.commercial(channel, seconds);
             } catch (error) {
-                // Handle any errors that may occur
                 console.error(error);
             }
         })();

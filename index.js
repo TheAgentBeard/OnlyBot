@@ -37,7 +37,7 @@ if (!OPENAI_API_KEY) {
 
 const commandNames = COMMAND_NAME.split(',').map(cmd => cmd.trim().toLowerCase());
 const channels = CHANNELS.split(',').map(channel => channel.trim());
-const maxLength = 1000;
+const maxLength = 2000;
 let fileContext = 'You are a helpful Twitch Chatbot.';
 let lastUserMessage = '';
 let lastResponseTime = 0; // Track the last response time
@@ -87,8 +87,8 @@ bot.onMessage(async (channel, user, message, self) => {
         }
         lastResponseTime = currentTime; // Update the last response time
 
-        const response = await openaiOps.make_openai_call(message);
-        bot.say(channel, response);
+       const response = await openaiOps.make_openai_call(message);
+       // bot.say(channel, response);
     }
 
     const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));

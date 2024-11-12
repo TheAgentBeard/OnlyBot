@@ -86,15 +86,6 @@ bot.onMessage(async (channel, user, message, self) => {
             return;
         }
         lastResponseTime = currentTime; // Update the last response time
-
-        const response = await openaiOps.make_openai_call(message);
-        bot.say(channel, response);
-         try {
-                const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
-                notifyFileChange(ttsAudioUrl);
-            } catch (error) {
-                console.error('TTS Error:', error);
-            }
     }
 
     const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));

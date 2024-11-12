@@ -1,11 +1,10 @@
 // Import tmi.js module
 import tmi from 'tmi.js';
 import OpenAI from 'openai';
-import axios from 'axios';  // Importiere Axios für HTTP-Anfragen
 import { promises as fsPromises } from 'fs';
 
 export class TwitchBot {
-    constructor(bot_username, oauth_token, channels, enable_tts) {
+    constructor(bot_username, oauth_token, channels, openai_api_key, enable_tts) {
         this.channels = channels;
         this.client = new tmi.client({
             connection: {
@@ -18,9 +17,8 @@ export class TwitchBot {
             },
             channels: this.channels
         });
+        this.openai = new OpenAI({apiKey: openai_api_key});
         this.enable_tts = enable_tts;
-        this.elevenLabsApiKey = 'sk_5a7d1e99d43df9ba5247ddd33f55d464eac838df6d4705f3'; // Deine Elevenlabs API-Schlüssel
-        this.voiceId = 'CwhRBWXzGAHq8TQ4Fs17'; // Deine Voice ID
     }
 
     addChannel(channel) {
@@ -89,36 +87,21 @@ export class TwitchBot {
             return;
         }
         try {
-            // Sende eine Anfrage an die Elevenlabs API, um den Text in Sprache umzuwandeln
-            const response = await axios.post('https://api.elevenlabs.io/v1/text-to-speech', {
-                voice_id: this.voiceId,
-                text: text,
-                model: 'elevenlabs_v2',  // Falls ein bestimmtes Modell verwendet wird
-                voice_settings: {
-                    stability: 0.5,  // Beispiel für Voice Settings, kannst du anpassen
-                    clarity: 0.75,
-                }
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${this.elevenLabsApiKey}`,
-                    'Content-Type': 'application/json',
-                },
-                responseType: 'arraybuffer',  // Wichtig: Wir erwarten die Audiodaten als ArrayBuffer
+            // Make a call to the OpenAI TTS model
+            const mp3 = await this.openai.audio.speech.create({
+                model: 'tts-1',
+                voice: 'alloy',
+                input: text,
             });
 
-            // Überprüfe, ob die Antwort erfolgreich war
-            if (response.status !== 200) {
-                throw new Error(`Error in TTS request: ${response.statusText}`);
-            }
+            // Convert the mp3 to a buffer
+            const buffer = Buffer.from(await mp3.arrayBuffer());
 
-            // Die MP3-Daten aus der Antwort extrahieren
-            const buffer = Buffer.from(response.data);
-
-            // Speichern der MP3-Datei auf der Festplatte
+            // Save the buffer as an MP3 file
             const filePath = './public/file.mp3';
             await fsPromises.writeFile(filePath, buffer);
 
-            // Gib den Pfad der gespeicherten Datei zurück
+            // Return the path of the saved audio file
             return filePath;
         } catch (error) {
             console.error('Error in sayTTS:', error);

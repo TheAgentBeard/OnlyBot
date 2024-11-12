@@ -87,7 +87,7 @@ bot.onMessage(async (channel, user, message, self) => {
         }
         lastResponseTime = currentTime; // Update the last response time
 
-        const response = await openaiOps.make_openai_call(message);
+        //const response = await openaiOps.make_openai_call(message);
         const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
         notifyFileChange(ttsAudioUrl);
         //bot.say(channel, response);

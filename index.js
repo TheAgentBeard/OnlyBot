@@ -114,7 +114,7 @@ bot.onMessage(async (channel, user, message, self) => {
         } else {
             bot.say(channel, response);
         }
-         if (ENABLE_TTS === 'true' && user['msg-id'] === 'highlighted-message') {
+         if (ENABLE_TTS === 'true') {
             try {
                 const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
                 notifyFileChange(ttsAudioUrl);

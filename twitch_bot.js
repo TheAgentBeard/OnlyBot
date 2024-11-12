@@ -81,7 +81,7 @@ export class TwitchBot {
             const response = await axios.post(
                 'https://api.elevenlabs.io/v1/text-to-speech/generate', 
                 {
-                    voice: 'en_us_male', // Beispiel-Stimme, du kannst hier eine andere auswählen
+                    voiceId: 'CwhRBWXzGAHq8TQ4Fs17', // Beispiel-Stimme, du kannst hier eine andere auswählen
                     text: text
                 }, 
                 {

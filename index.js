@@ -1,205 +1,204 @@
-import express from 'express';
-import fs from 'fs';
-import ws from 'ws';
-import expressWs from 'express-ws';
-import {job} from './keep_alive.js';
-import {OpenAIOperations} from './openai_operations.js';
-import {TwitchBot} from './twitch_bot.js';
+// Import tmi.js module
+import tmi from 'tmi.js';
+import fetch from 'node-fetch';  // Wir verwenden fetch für HTTP-Anfragen
+import { promises as fsPromises } from 'fs';
 
-// Start keep alive cron job
-job.start();
-console.log(process.env);
-
-// Setup express app
-const app = express();
-const expressWsInstance = expressWs(app);
-
-// Set the view engine to ejs
-app.set('view engine', 'ejs');
-
-// Load environment variables
-const GPT_MODE = process.env.GPT_MODE || 'CHAT';
-const HISTORY_LENGTH = process.env.HISTORY_LENGTH || 5;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const MODEL_NAME = process.env.MODEL_NAME || 'gpt-3.5-turbo';
-const TWITCH_USER = process.env.TWITCH_USER || 'oSetinhasBot';
-const TWITCH_AUTH = process.env.TWITCH_AUTH || 'oauth:vgvx55j6qzz1lkt3cwggxki1lv53c2';
-const VOICE_ID = process.env.VOICE_ID || 'oauth:vgvx55j6qzz1lkt3cwggxki1lv53c2';
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || 'oauth:vgvx55j6qzz1lkt3cwggxki1lv53c2';
-const COMMAND_NAME = process.env.COMMAND_NAME || '!gpt';
-const CHANNELS = process.env.CHANNELS || 'oSetinhas,jones88';
-const SEND_USERNAME = process.env.SEND_USERNAME || 'true';
-const ENABLE_TTS = process.env.ENABLE_TTS || 'false';
-const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS || 'false';
-const COOLDOWN_DURATION = parseInt(process.env.COOLDOWN_DURATION, 10) || 10; // Cooldown duration in seconds
-
-if (!OPENAI_API_KEY) {
-    console.error('No OPENAI_API_KEY found. Please set it as an environment variable.');
-}
-
-const commandNames = COMMAND_NAME.split(',').map(cmd => cmd.trim().toLowerCase());
-const channels = CHANNELS.split(',').map(channel => channel.trim());
-const maxLength = 2000;
-let fileContext = 'You are a helpful Twitch Chatbot.';
-let lastUserMessage = '';
-let lastResponseTime = 0; // Track the last response time
-
-// Setup Twitch bot
-console.log('Channels: ', channels);
-const bot = new TwitchBot(TWITCH_USER, TWITCH_AUTH, channels, OPENAI_API_KEY, ENABLE_TTS);
-
-// Setup OpenAI operations
-fileContext = fs.readFileSync('./file_context.txt', 'utf8');
-const openaiOps = new OpenAIOperations(fileContext, OPENAI_API_KEY, MODEL_NAME, HISTORY_LENGTH);
-
-// Setup Twitch bot callbacks
-bot.onConnected((addr, port) => {
-    console.log(`* Connected to ${addr}:${port}`);
-    channels.forEach(channel => {
-        console.log(`* Joining ${channel}`);
-        console.log(`* Saying hello in ${channel}`);
-    });
-});
-
-bot.onDisconnected(reason => {
-    console.log(`Disconnected: ${reason}`);
-});
-
-// Connect bot
-bot.connect(
-    () => {
-        console.log('Bot connected!');
-    },
-    error => {
-        console.error('Bot couldn\'t connect!', error);
-    }
-);
-
-bot.onMessage(async (channel, user, message, self) => {
-    if (self) return;
-
-    const currentTime = Date.now();
-    const elapsedTime = (currentTime - lastResponseTime) / 1000; // Time in seconds
-
-    if (ENABLE_CHANNEL_POINTS === 'true' && user['custom-reward-id'] === '390a4985-1428-49b7-952f-03637defe0ab') {
-        console.log(`Highlighted message: ${message}`);
-        if (elapsedTime < COOLDOWN_DURATION) {
-            bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds before sending another message.`);
-            return;
-        }
-        lastResponseTime = currentTime; // Update the last response time
-        const response = await openaiOps.make_openai_call(message);
-        const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
-                notifyFileChange(ttsAudioUrl);
-        bot.say(channel, response);
+export class TwitchBot {
+    constructor(bot_username, oauth_token, channels, enable_tts) {
+        this.channels = channels;
+        this.client = new tmi.client({
+            connection: {
+                reconnect: true,
+                secure: true
+            },
+            identity: {
+                username: bot_username,
+                password: oauth_token
+            },
+            channels: this.channels
+        });
+        this.enable_tts = enable_tts;
+        this.elevenLabsApiKey = 'sk_5a7d1e99d43df9ba5247ddd33f55d464eac838df6d4705f3'; // Deine Elevenlabs API-Schlüssel
+        this.voiceId = 'CwhRBWXzGAHq8TQ4Fs17'; // Deine Voice ID
     }
 
-    const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));
-    if (command) {
-        if (elapsedTime < COOLDOWN_DURATION) {
-            bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds before sending another message.`);
-            return;
+    addChannel(channel) {
+        // Check if channel is already in the list
+        if (!this.channels.includes(channel)) {
+            this.channels.push(channel);
+            // Use join method to join a channel instead of modifying the channels property directly
+            this.client.join(channel);
         }
-        lastResponseTime = currentTime; // Update the last response time
+    }
 
-        let text = message.slice(command.length).trim();
-        if (SEND_USERNAME === 'true') {
-            text = `Message from user ${user.username}: ${text}`;
-        }
-
-        const response = await openaiOps.make_openai_call(text);
-        if (response.length > maxLength) {
-            const messages = response.match(new RegExp(`.{1,${maxLength}}`, 'g'));
-            messages.forEach((msg, index) => {
-                setTimeout(() => {
-                    bot.say(channel, msg);
-                }, 1000 * index);
-            });
-        } else {
-            bot.say(channel, response);
-        }
-         if (ENABLE_TTS === 'false') {
+    connect() {
+        // Use async/await syntax to handle promises
+        (async () => {
             try {
-                const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
-                notifyFileChange(ttsAudioUrl);
+                // Await for the connection to be established
+                await this.client.connect();
             } catch (error) {
-                console.error('TTS Error:', error);
+                // Handle any errors that may occur
+                console.error(error);
             }
-        }
-       
+        })();
     }
-});
 
-app.ws('/check-for-updates', (ws, req) => {
-    ws.on('message', message => {
-        // Handle WebSocket messages (if needed)
-    });
-});
-
-const messages = [{role: 'system', content: 'You are a helpful Twitch Chatbot.'}];
-console.log('GPT_MODE:', GPT_MODE);
-console.log('History length:', HISTORY_LENGTH);
-console.log('OpenAI API Key:', OPENAI_API_KEY);
-console.log('Model Name:', MODEL_NAME);
-
-app.use(express.json({extended: true, limit: '1mb'}));
-app.use('/public', express.static('public'));
-
-app.all('/', (req, res) => {
-    console.log('Received a request!');
-    res.render('pages/index');
-});
-
-if (GPT_MODE === 'CHAT') {
-    fs.readFile('./file_context.txt', 'utf8', (err, data) => {
-        if (err) throw err;
-        console.log('Reading context file and adding it as system-level message for the agent.');
-        messages[0].content = data;
-    });
-} else {
-    fs.readFile('./file_context.txt', 'utf8', (err, data) => {
-        if (err) throw err;
-        console.log('Reading context file and adding it in front of user prompts:');
-        fileContext = data;
-    });
-}
-
-app.get('/gpt/:text', async (req, res) => {
-    const text = req.params.text;
-
-    let answer = '';
-    try {
-        if (GPT_MODE === 'CHAT') {
-            answer = await openaiOps.make_openai_call(text);
-        } else if (GPT_MODE === 'PROMPT') {
-            const prompt = `${fileContext}\n\nUser: ${text}\nAgent:`;
-            answer = await openaiOps.make_openai_call_completion(prompt);
-        } else {
-            throw new Error('GPT_MODE is not set to CHAT or PROMPT. Please set it as an environment variable.');
-        }
-
-        res.send(answer);
-    } catch (error) {
-        console.error('Error generating response:', error);
-        res.status(500).send('An error occurred while generating the response.');
+    disconnect() {
+        // Use async/await syntax to handle promises
+        (async () => {
+            try {
+                // Await for the connection to be closed
+                await this.client.disconnect();
+            } catch (error) {
+                // Handle any errors that may occur
+                console.error(error);
+            }
+        })();
     }
-});
 
-const server = app.listen(3000, () => {
-    console.log('Server running on port 3000');
-});
+    onMessage(callback) {
+        this.client.on('message', callback);
+    }
 
-const wss = expressWsInstance.getWss();
-wss.on('connection', ws => {
-    ws.on('message', message => {
-        // Handle client messages (if needed)
-    });
-});
+    onConnected(callback) {
+        this.client.on('connected', callback);
+    }
 
-function notifyFileChange() {
-    wss.clients.forEach(client => {
-        if (client.readyState === ws.OPEN) {
-            client.send(JSON.stringify({updated: true}));
+    onDisconnected(callback) {
+        this.client.on('disconnected', callback);
+    }
+
+    say(channel, message) {
+        // Use async/await syntax to handle promises
+        (async () => {
+            try {
+                // Await for the message to be sent
+                await this.client.say(channel, message);
+            } catch (error) {
+                // Handle any errors that may occur
+                console.error(error);
+            }
+        })();
+    }
+
+    async sayTTS(channel, text, userstate) {
+        // Check if TTS is enabled
+        if (this.enable_tts !== 'true') {
+            return;
         }
-    });
+        try {
+            // Sende eine Anfrage an die Elevenlabs API, um den Text in Sprache umzuwandeln
+            const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.elevenLabsApiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    voice_id: this.voiceId,
+                    text: text,
+                    model: 'elevenlabs_v2',  // Falls ein bestimmtes Modell verwendet wird
+                    voice_settings: {
+                        stability: 0.5,  // Beispiel für Voice Settings, kannst du anpassen
+                        clarity: 0.75,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error in TTS request: ${response.statusText}`);
+            }
+
+            // Wir gehen davon aus, dass die API die MP3-Datei im Response-Body zurückgibt
+            const buffer = await response.buffer();
+
+            // Speichern der MP3-Datei auf der Festplatte
+            const filePath = './public/file.mp3';
+            await fsPromises.writeFile(filePath, buffer);
+
+            // Gib den Pfad der gespeicherten Datei zurück
+            return filePath;
+        } catch (error) {
+            console.error('Error in sayTTS:', error);
+        }
+    }
+
+    whisper(username, message) {
+        // Use async/await syntax to handle promises
+        (async () => {
+            try {
+                // Await for the message to be sent
+                await this.client.whisper(username, message);
+            } catch (error) {
+                // Handle any errors that may occur
+                console.error(error);
+            }
+        })();
+    }
+
+    ban(channel, username, reason) {
+        // Use async/await syntax to handle promises
+        (async () => {
+            try {
+                // Await for the user to be banned
+                await this.client.ban(channel, username, reason);
+            } catch (error) {
+                // Handle any errors that may occur
+                console.error(error);
+            }
+        })();
+    }
+
+    unban(channel, username) {
+        // Use async/await syntax to handle promises
+        (async () => {
+            try {
+                // Await for the user to be unbanned
+                await this.client.unban(channel, username);
+            } catch (error) {
+                // Handle any errors that may occur
+                console.error(error);
+            }
+        })();
+    }
+
+    clear(channel) {
+        // Use async/await syntax to handle promises
+        (async () => {
+            try {
+                // Await for the chat to be cleared
+                await this.client.clear(channel);
+            } catch (error) {
+                // Handle any errors that may occur
+                console.error(error);
+            }
+        })();
+    }
+
+    color(channel, color) {
+        // Use async/await syntax to handle promises
+        (async () => {
+            try {
+                // Await for the color to be changed
+                await this.client.color(channel, color);
+            } catch (error) {
+                // Handle any errors that may occur
+                console.error(error);
+            }
+        })();
+    }
+
+    commercial(channel, seconds) {
+        // Use async/await syntax to handle promises
+        (async () => {
+            try {
+                // Await for the commercial to be played
+                await this.client.commercial(channel, seconds);
+            } catch (error) {
+                // Handle any errors that may occur
+                console.error(error);
+            }
+        })();
+    }
 }

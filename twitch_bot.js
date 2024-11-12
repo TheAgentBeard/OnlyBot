@@ -1,7 +1,6 @@
 // Import tmi.js module
 import tmi from 'tmi.js';
 import OpenAI from 'openai';
-import axios from 'axios';  // Axios für HTTP-Anfragen
 import { promises as fsPromises } from 'fs';
 
 export class TwitchBot {

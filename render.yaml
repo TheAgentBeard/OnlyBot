@@ -31,8 +31,3 @@ services:
         value: "false"
       - key: COOLDOWN_DURATION
         value: "10"
-      - key: EL_API_KEY
-        value: <your-el-api-key>
-      - key: EL_VOICE_KEY
-        value: <your-el-voice-key>
-

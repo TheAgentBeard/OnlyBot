@@ -1,202 +1,224 @@
-import express from 'express';
-import fs from 'fs';
-import ws from 'ws';
-import expressWs from 'express-ws';
-import {job} from './keep_alive.js';
-import {OpenAIOperations} from './openai_operations.js';
-import {TwitchBot} from './twitch_bot.js';
+// ELEVENLABS PARAMETERS https://beta.elevenlabs.io/
+var apiKey = "sk_5a7d1e99d43df9ba5247ddd33f55d464eac838df6d4705f3"; // your elevenlabs api key
 
-// Start keep alive cron job
-job.start();
-console.log(process.env);
+// TWITCH PARAMETERS
+var channelId = "70336436"; // your twitch channel id
 
-// Setup express app
-const app = express();
-const expressWsInstance = expressWs(app);
-
-// Set the view engine to ejs
-app.set('view engine', 'ejs');
-
-// Load environment variables
-const GPT_MODE = process.env.GPT_MODE || 'CHAT';
-const HISTORY_LENGTH = process.env.HISTORY_LENGTH || 5;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const MODEL_NAME = process.env.MODEL_NAME || 'gpt-3.5-turbo';
-const TWITCH_USER = process.env.TWITCH_USER || 'oSetinhasBot';
-const TWITCH_AUTH = process.env.TWITCH_AUTH || 'oauth:vgvx55j6qzz1lkt3cwggxki1lv53c2';
-const COMMAND_NAME = process.env.COMMAND_NAME || '!gpt';
-const CHANNELS = process.env.CHANNELS || 'oSetinhas,jones88';
-const SEND_USERNAME = process.env.SEND_USERNAME || 'true';
-const ENABLE_TTS = process.env.ENABLE_TTS || 'false';
-const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS || 'false';
-const COOLDOWN_DURATION = parseInt(process.env.COOLDOWN_DURATION, 10) || 10; // Cooldown duration in seconds
-
-if (!OPENAI_API_KEY) {
-    console.error('No OPENAI_API_KEY found. Please set it as an environment variable.');
-}
-
-const commandNames = COMMAND_NAME.split(',').map(cmd => cmd.trim().toLowerCase());
-const channels = CHANNELS.split(',').map(channel => channel.trim());
-const maxLength = 399;
-let fileContext = 'You are a helpful Twitch Chatbot.';
-let lastUserMessage = '';
-let lastResponseTime = 0; // Track the last response time
-
-// Setup Twitch bot
-console.log('Channels: ', channels);
-const bot = new TwitchBot(TWITCH_USER, TWITCH_AUTH, channels, OPENAI_API_KEY, ENABLE_TTS);
-
-// Setup OpenAI operations
-fileContext = fs.readFileSync('./file_context.txt', 'utf8');
-const openaiOps = new OpenAIOperations(fileContext, OPENAI_API_KEY, MODEL_NAME, HISTORY_LENGTH);
-
-// Setup Twitch bot callbacks
-bot.onConnected((addr, port) => {
-    console.log(`* Connected to ${addr}:${port}`);
-    channels.forEach(channel => {
-        console.log(`* Joining ${channel}`);
-        console.log(`* Saying hello in ${channel}`);
-    });
-});
-
-bot.onDisconnected(reason => {
-    console.log(`Disconnected: ${reason}`);
-});
-
-// Connect bot
-bot.connect(
-    () => {
-        console.log('Bot connected!');
+// rewards
+var rewards = {
+    "Radd (AI TTS)": {
+        // reward name (must be the same as the reward name in twitch !! case sensitive)
+        ttsCharacterLimit: 1000, // max characters to send
+        type: "elevenlabs", // elevenlabs or streamelements
+        voiceId: "CwhRBWXzGAHq8TQ4Fs17", // elevenlabs voice id
+        volume: 1, // volume 0.0 - 1.0
+        stability: 0.3, // elevenlabs stability 0.0 - 1.0
+        style: 0.5, // elevenlabs values
+        useSpeakerBoost: false, // elevenlabs values
+        modelId: "eleven_monolingual_v1",  // elevenlabs values. Use eleven_monolingual_v1 for english only and eleven_multilingual_v1 for other languages
+        similarityBoost: 0.8, // elevenlabs similarityBoost 0.0 - 1.0
     },
-    error => {
-        console.error('Bot couldn\'t connect!', error);
+    "Brian (Normal TTS)": {
+        // reward name (must be the same as the reward name in twitch !! case sensitive)
+        ttsCharacterLimit: 1500, // max characters to send
+        type: "streamelements", // streamelements or elevenlabs
+        voiceId: "Brian", // streamelements voice id
+        volume: 0.35, // volume 0.0 - 1.0
+    },
+};
+
+
+
+// -----------------
+// DEBUG PARAMETERS
+// -----------------
+var testTTSOnLoad = false; // debug mode to test. true = F5 to play text false = nothing. Leave this on false if you dont plan to change the code.
+var testTTS = "Brian (Normal TTS)"; // reward name to test
+var testText = "Hello world"; // text to test
+
+function sleep(miliseconds) {
+    return new Promise((res) => setTimeout(res, miliseconds));
+}
+
+async function textToSpeech(reward, text) {
+    const ctx = new AudioContext();
+
+    // Limit text length
+    text = text.substring(0, reward["ttsCharacterLimit"]);
+
+    console.log("TTS text:", text);
+
+    let url;
+    let requestOptions;
+    if (reward["type"] == "elevenlabs") {
+        requestOptions = {
+            method: "POST",
+            headers: {
+                "xi-api-key": apiKey,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                text: text,
+                model_id: reward["modelId"],
+                voice_settings: {
+                    stability: reward["stability"],
+                    similarity_boost: reward["similarityBoost"],
+                    style: reward["style"],
+                    use_speaker_boost: reward["useSpeakerBoost"],
+                },
+            }),
+        };
+        url = `https://api.elevenlabs.io/v1/text-to-speech/${reward["voiceId"]}`;
+    } else if (reward["type"] == "streamelements") {
+        url = `https://api.streamelements.com/kappa/v2/speech?voice=${reward["voiceId"]}&text=${text}`;
+    } else {
+        throw "TTS type not found";
     }
-);
 
-bot.onMessage(async (channel, user, message, self) => {
-    if (self) return;
+    // fetch() returns a promise that
+    // resolves once headers have been received
+    var response = await fetch(url, requestOptions);
 
-    const currentTime = Date.now();
-    const elapsedTime = (currentTime - lastResponseTime) / 1000; // Time in seconds
+    var arrayBuffer = await response.arrayBuffer();
+    var decodedAudio = await ctx.decodeAudioData(arrayBuffer);
+    var gainNode = ctx.createGain();
+    gainNode.connect(ctx.destination);
+    gainNode.gain.value = reward["volume"];
+    const audio = decodedAudio;
+    const source = ctx.createBufferSource();
+    source.buffer = audio;
+    source.connect(gainNode);
+    source.start();
+    return new Promise((resolve, reject) => {
+        source.onended = resolve;
+    });
+}
 
-    if (ENABLE_CHANNEL_POINTS === 'true' && user['custom-reward-id'] === '390a4985-1428-49b7-952f-03637defe0ab') {
-        console.log(`Highlighted message: ${message}`);
-        if (elapsedTime < COOLDOWN_DURATION) {
-            bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds before sending another message.`);
-            return;
-        }
-        lastResponseTime = currentTime; // Update the last response time
+window.onload = () => {
+    let ws = undefined;
+    let pong = false;
+    let interval = false;
 
-        const response = await openaiOps.make_openai_call(message);
-        bot.say(channel, response);
-    }
+    let notifications = [];
 
-    const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));
-    if (command) {
-        if (elapsedTime < COOLDOWN_DURATION) {
-            bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds before sending another message.`);
-            return;
-        }
-        lastResponseTime = currentTime; // Update the last response time
+    (async () => {
+        while (true) {
+            if (notifications.length > 0) {
+                let notif = notifications.pop();
+                console.log("Notification started", notif);
 
-        let text = message.slice(command.length).trim();
-        if (SEND_USERNAME === 'true') {
-            text = `Message from user ${user.username}: ${text}`;
-        }
-
-        const response = await openaiOps.make_openai_call(text);
-        if (response.length > maxLength) {
-            const messages = response.match(new RegExp(`.{1,${maxLength}}`, 'g'));
-            messages.forEach((msg, index) => {
-                setTimeout(() => {
-                    bot.say(channel, msg);
-                }, 1000 * index);
-            });
-        } else {
-            bot.say(channel, response);
-        }
-
-        if (ENABLE_TTS === 'true') {
-            try {
-                const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
-                notifyFileChange(ttsAudioUrl);
-            } catch (error) {
-                console.error('TTS Error:', error);
+                let reward = rewards[notif.title];
+                if (reward && notif.text != "") {
+                    console.log("Playing TTS");
+                    try {
+                        await textToSpeech(reward, notif.text);
+                        console.log("TTS ended");
+                    } catch (e) {
+                        console.log("TTS error:", e);
+                    }
+                }
+                console.log("Notification ended");
             }
+            await sleep(1000);
         }
+    })();
+
+    function connect() {
+        ws = new WebSocket("wss://pubsub-edge.twitch.tv");
+        listen();
     }
-});
-
-app.ws('/check-for-updates', (ws, req) => {
-    ws.on('message', message => {
-        // Handle WebSocket messages (if needed)
-    });
-});
-
-const messages = [{role: 'system', content: 'You are a helpful Twitch Chatbot.'}];
-console.log('GPT_MODE:', GPT_MODE);
-console.log('History length:', HISTORY_LENGTH);
-console.log('OpenAI API Key:', OPENAI_API_KEY);
-console.log('Model Name:', MODEL_NAME);
-
-app.use(express.json({extended: true, limit: '1mb'}));
-app.use('/public', express.static('public'));
-
-app.all('/', (req, res) => {
-    console.log('Received a request!');
-    res.render('pages/index');
-});
-
-if (GPT_MODE === 'CHAT') {
-    fs.readFile('./file_context.txt', 'utf8', (err, data) => {
-        if (err) throw err;
-        console.log('Reading context file and adding it as system-level message for the agent.');
-        messages[0].content = data;
-    });
-} else {
-    fs.readFile('./file_context.txt', 'utf8', (err, data) => {
-        if (err) throw err;
-        console.log('Reading context file and adding it in front of user prompts:');
-        fileContext = data;
-    });
-}
-
-app.get('/gpt/:text', async (req, res) => {
-    const text = req.params.text;
-
-    let answer = '';
-    try {
-        if (GPT_MODE === 'CHAT') {
-            answer = await openaiOps.make_openai_call(text);
-        } else if (GPT_MODE === 'PROMPT') {
-            const prompt = `${fileContext}\n\nUser: ${text}\nAgent:`;
-            answer = await openaiOps.make_openai_call_completion(prompt);
-        } else {
-            throw new Error('GPT_MODE is not set to CHAT or PROMPT. Please set it as an environment variable.');
+    function disconnect() {
+        if (interval) {
+            clearInterval(interval);
+            interval = false;
         }
-
-        res.send(answer);
-    } catch (error) {
-        console.error('Error generating response:', error);
-        res.status(500).send('An error occurred while generating the response.');
+        ws.close();
     }
-});
 
-const server = app.listen(3000, () => {
-    console.log('Server running on port 3000');
-});
+    function listen() {
+        ws.onmessage = (a) => {
+            let o = JSON.parse(a.data);
+            switch (o.type) {
+                case "PING":
+                    ws.send(
+                        JSON.stringify({
+                            type: "PONG",
+                        })
+                    );
+                    break;
+                case "PONG":
+                    pong = true;
+                    break;
+                case "RECONNECT":
+                    disconnect();
+                    connect();
+                    break;
+                case "RESPONCE":
+                    console.log("PubSub responce ", o.error);
+                    break;
+                case "MESSAGE":
+                    switch (o.data.topic) {
+                        case `community-points-channel-v1.${channelId}`:
+                            let msg = JSON.parse(o.data.message);
+                            console.log(msg);
+                            switch (msg.type) {
+                                case "reward-redeemed":
+                                    let reward = msg.data.redemption.reward;
 
-const wss = expressWsInstance.getWss();
-wss.on('connection', ws => {
-    ws.on('message', message => {
-        // Handle client messages (if needed)
-    });
-});
+                                    let notif = {
+                                        title: reward.title,
+                                        price: reward.cost,
+                                        user: "1159345603",
+                                        text: msg.data.redemption.user_input,
+                                    };
+                                    console.log("Notification queued", notif);
+                                    notifications.push(notif);
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+            }
+        };
+        ws.onopen = () => {
+            if (testTTSOnLoad) {
+                let notif = {
+                    title: testTTS,
+                    price: 5000,
+                    user: "test_user",
+                    text: testText,
+                };
+                console.log("Notification queued", notif);
+                notifications.push(notif);
+            }
 
-function notifyFileChange() {
-    wss.clients.forEach(client => {
-        if (client.readyState === ws.OPEN) {
-            client.send(JSON.stringify({updated: true}));
-        }
-    });
-}
+            ws.send(
+                JSON.stringify({
+                    type: "LISTEN",
+                    nonce: "pepega",
+                    data: {
+                        topics: ["community-points-channel-v1." + channelId],
+                        auth_token: "",
+                    },
+                })
+            );
+            interval = setInterval(async () => {
+                ws.send(
+                    JSON.stringify({
+                        type: "PING",
+                    })
+                );
+                await sleep(5000);
+                if (pong) {
+                    pong = false;
+                } else {
+                    pong = false;
+                    disconnect();
+                    connect();
+                }
+            }, 5 * 60 * 1000);
+        };
+    }
+
+    connect();
+};

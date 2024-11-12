@@ -79,15 +79,15 @@ bot.onMessage(async (channel, user, message, self) => {
     const currentTime = Date.now();
     const elapsedTime = (currentTime - lastResponseTime) / 1000; // Time in seconds
 
-    if (ENABLE_CHANNEL_POINTS === 'true' && user['custom-reward-id'] === '390a4985-1428-49b7-952f-03637defe0ab') {
+    if (ENABLE_CHANNEL_POINTS === 'true' && ENABLE_TTS === 'true' && user['custom-reward-id'] === '390a4985-1428-49b7-952f-03637defe0ab') {
         console.log(`Highlighted message: ${message}`);
         if (elapsedTime < COOLDOWN_DURATION) {
             bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds before sending another message.`);
             return;
         }
         lastResponseTime = currentTime; // Update the last response time
-        const response = await openaiOps.make_openai_call(message);
-             
+         const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
+         notifyFileChange(ttsAudioUrl);    
        bot.say(channel, response);
     }
 
@@ -116,14 +116,7 @@ bot.onMessage(async (channel, user, message, self) => {
             bot.say(channel, response);
         }
 
-        if (ENABLE_TTS === 'true') {
-            try {
-                const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
-                notifyFileChange(ttsAudioUrl);
-            } catch (error) {
-                console.error('TTS Error:', error);
-            }
-        }
+       
     }
 });
 

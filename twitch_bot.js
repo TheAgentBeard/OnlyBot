@@ -92,7 +92,7 @@ export class TwitchBot {
             const response = await axios.post('https://api.elevenlabs.io/v1/text-to-speech', {
                 voice_id: this.voiceId,
                 text: text,
-                model: 'elevenlabs_v2',  // Falls ein bestimmtes Modell verwendet wird
+                model: 'eleven_monolingual_v1',  // Falls ein bestimmtes Modell verwendet wird
                 voice_settings: {
                     stability: 0.5,  // Beispiel für Voice Settings, kannst du anpassen
                     clarity: 0.75,

@@ -121,6 +121,7 @@ async function sayTTS(channel, text, userstate) {
     } catch (error) {
         console.error('Error in sayTTS:', error);
     }
+}
 
     whisper(username, message) {
         // Use async/await syntax to handle promises

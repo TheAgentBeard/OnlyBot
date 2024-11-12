@@ -90,7 +90,7 @@ bot.onMessage(async (channel, user, message, self) => {
         const response = await openaiOps.make_openai_call(message);
         const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
         notifyFileChange(ttsAudioUrl);
-        bot.say(channel, response);
+        //bot.say(channel, response);
     }
 
     const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));

@@ -81,31 +81,45 @@ export class TwitchBot {
         })();
     }
 
-    async sayTTS(channel, text, userstate) {
-        // Check if TTS is enabled
-        if (this.enable_tts !== 'true') {
-            return;
-        }
-        try {
-            // Make a call to the OpenAI TTS model
-            const mp3 = await this.openai.audio.speech.create({
-                model: 'tts-1',
-                voice: 'alloy',
-                input: text,
-            });
+const axios = require('axios');
+const fs = require('fs').promises;
 
-            // Convert the mp3 to a buffer
-            const buffer = Buffer.from(await mp3.arrayBuffer());
+async function sayTTS(channel, text, userstate) {
+    // Check if TTS is enabled
+    if (this.enable_tts !== 'true') {
+        return;
+    }
+    
+    try {
+        // Set up the request payload
+        const apiKey = 'sk_5a7d1e99d43df9ba5247ddd33f55d464eac838df6d4705f3';  // Ersetze mit deinem API-Schlüssel
+        const url = 'https://api.elevenlabs.io/v1/text-to-speech';  // API-Endpunkt von ElevenLabs
+        const voice = 'en_us_male';  // Beispiel für eine männliche Stimme, kann angepasst werden
 
-            // Save the buffer as an MP3 file
-            const filePath = './public/file.mp3';
-            await fsPromises.writeFile(filePath, buffer);
+        const response = await axios.post(url, {
+            text: text,
+            voice: voice,
+            apiKey: apiKey,  // Authentifizierung via API-Schlüssel
+        }, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            responseType: 'arraybuffer',  // Wir erwarten eine Binärantwort (MP3)
+        });
 
-            // Return the path of the saved audio file
-            return filePath;
-        } catch (error) {
-            console.error('Error in sayTTS:', error);
-        }
+        // Convert the received buffer to an MP3 file
+        const buffer = Buffer.from(response.data);
+
+        // Save the buffer as an MP3 file
+        const filePath = './public/file.mp3';
+        await fs.writeFile(filePath, buffer);
+
+        // Return the path of the saved audio file
+        return filePath;
+
+    } catch (error) {
+        console.error('Error in sayTTS:', error);
     }
 
     whisper(username, message) {

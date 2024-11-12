@@ -86,8 +86,7 @@ bot.onMessage(async (channel, user, message, self) => {
             return;
         }
         lastResponseTime = currentTime; // Update the last response time
-         const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
-         notifyFileChange(ttsAudioUrl);    
+ const response = await openaiOps.make_openai_call(message);
        bot.say(channel, response);
     }
 
@@ -115,7 +114,14 @@ bot.onMessage(async (channel, user, message, self) => {
         } else {
             bot.say(channel, response);
         }
-
+         if (ENABLE_TTS === 'true' && user['custom-reward-id'] === '390a4985-1428-49b7-952f-03637defe0ab') {
+            try {
+                const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
+                notifyFileChange(ttsAudioUrl);
+            } catch (error) {
+                console.error('TTS Error:', error);
+            }
+        }
        
     }
 });

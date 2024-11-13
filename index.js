@@ -182,8 +182,10 @@ app.get('/gpt/:text', async (req, res) => {
     }
 });
 
-const server = app.listen(3000, () => {
-    console.log('Server running on port 3000');
+const port = process.env.PORT || 3000;  // Nutze den Port von Render oder 3000 lokal
+
+const server = app.listen(port, () => {
+    console.log(`Server läuft auf Port ${port}`);
 });
 
 const wss = expressWsInstance.getWss();

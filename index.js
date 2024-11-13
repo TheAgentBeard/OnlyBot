@@ -1,6 +1,7 @@
 import express from 'express';
 import fs from 'fs';
 import ws from 'ws';
+import cors from 'cors';
 import expressWs from 'express-ws';
 import { job } from './keep_alive.js';
 import { OpenAIOperations } from './openai_operations.js';
@@ -13,6 +14,8 @@ console.log(process.env);
 // Setup express app
 const app = express();
 const expressWsInstance = expressWs(app);
+const cors = require('cors');  // Import von CORS
+app.use(cors());
 
 // Load environment variables
 const GPT_MODE = process.env.GPT_MODE || 'CHAT';

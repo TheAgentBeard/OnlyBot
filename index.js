@@ -1,6 +1,7 @@
 import express from 'express';
 import fs from 'fs';
 import ws from 'ws';
+import cors from 'cors';
 import expressWs from 'express-ws';
 import { job } from './keep_alive.js';
 import { OpenAIOperations } from './openai_operations.js';

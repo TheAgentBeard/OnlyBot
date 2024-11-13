@@ -142,7 +142,6 @@ bot.onMessage(async (channel, user, message, self) => {
 // Funktion zum Hochladen der Antwort als Textdatei
 async function uploadResponseToFTP(response) {
     const client = new ftp.Client();
-
     try {
         // Stelle eine Verbindung zum FTP-Server her
         await client.access({
@@ -152,10 +151,10 @@ async function uploadResponseToFTP(response) {
         });
 
         // Wandelt die Antwort in einen Buffer um
-        const buffer = Buffer.from(response, 'utf-8');  // Umwandlung in Buffer
+        const buffer = Buffer.from(response, 'utf-8');  // Text in Buffer umwandeln
 
         // Lade die Antwort als .txt-Datei auf den FTP-Server hoch
-        await client.uploadFrom(buffer, './test.txt');  // Gib den Zielpfad an
+        await client.uploadFrom(buffer, './file.txt');  // Zielpfad auf dem Server angeben
 
         console.log('Antwort erfolgreich auf den FTP-Server hochgeladen.');
     } catch (err) {
@@ -165,7 +164,7 @@ async function uploadResponseToFTP(response) {
     }
 }
 
-// Beispiel für den Funktionsaufruf
+// Beispielaufruf der Funktion
 const responseText = 'Dies ist eine Antwort, die hochgeladen werden soll.';
 uploadResponseToFTP(responseText);
 

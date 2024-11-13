@@ -1,10 +1,10 @@
 // Import tmi.js module
 import tmi from 'tmi.js';
-import OpenAI from 'openai';
 import { promises as fsPromises } from 'fs';
+import axios from 'axios';  // Um HTTP-Anfragen zu machen
 
 export class TwitchBot {
-    constructor(bot_username, oauth_token, channels, openai_api_key, enable_tts) {
+    constructor(bot_username, oauth_token, channels, enable_tts) {
         this.channels = channels;
         this.client = new tmi.client({
             connection: {
@@ -17,8 +17,9 @@ export class TwitchBot {
             },
             channels: this.channels
         });
-        this.openai = new OpenAI({apiKey: openai_api_key});
         this.enable_tts = enable_tts;
+        this.elevenlabsApiKey = "sk_5a7d1e99d43df9ba5247ddd33f55d464eac838df6d4705f3";  // Dein ElevenLabs API-Key
+        this.voiceID = "CwhRBWXzGAHq8TQ4Fs17";  // Deine VoiceID für ElevenLabs
     }
 
     addChannel(channel) {
@@ -86,16 +87,25 @@ export class TwitchBot {
         if (this.enable_tts !== 'true') {
             return;
         }
+
         try {
-            // Make a call to the OpenAI TTS model
-            const mp3 = await this.openai.audio.speech.create({
-                model: 'tts-1',
-                voice: 'alloy',
-                input: text,
+            // Request to ElevenLabs API to generate speech from text
+            const response = await axios.post('https://api.elevenlabs.io/v1/text-to-speech/' + this.voiceID, {
+                text: text,
+                voice_settings: {
+                    stability: 0.75,
+                    similarity: 0.75
+                }
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${this.elevenlabsApiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                responseType: 'arraybuffer'  // Expect audio response as binary data
             });
 
-            // Convert the mp3 to a buffer
-            const buffer = Buffer.from(await mp3.arrayBuffer());
+            // Create a buffer from the received audio data
+            const buffer = Buffer.from(response.data);
 
             // Save the buffer as an MP3 file
             const filePath = './public/file.mp3';

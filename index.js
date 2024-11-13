@@ -2,9 +2,9 @@ import express from 'express';
 import fs from 'fs';
 import ws from 'ws';
 import expressWs from 'express-ws';
-import {job} from './keep_alive.js';
-import {OpenAIOperations} from './openai_operations.js';
-import {TwitchBot} from './twitch_bot.js';
+import { job } from './keep_alive.js';
+import { OpenAIOperations } from './openai_operations.js';
+import { TwitchBot } from './twitch_bot.js';
 
 // Start keep alive cron job
 job.start();
@@ -86,6 +86,9 @@ bot.onMessage(async (channel, user, message, self) => {
 
         const response = await openaiOps.make_openai_call(message);
         bot.say(channel, response);
+
+        // Save the response to the public file.txt
+        saveResponseToFile(response);
     }
 
     const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));
@@ -113,6 +116,9 @@ bot.onMessage(async (channel, user, message, self) => {
             bot.say(channel, response);
         }
 
+        // Save the response to the public file.txt
+        saveResponseToFile(response);
+
         if (ENABLE_TTS === 'true') {
             try {
                 const ttsAudioUrl = await bot.sayTTS(channel, response, user['userstate']);
@@ -130,13 +136,13 @@ app.ws('/check-for-updates', (ws, req) => {
     });
 });
 
-const messages = [{role: 'system', content: 'You are a helpful Twitch Chatbot.'}];
+const messages = [{ role: 'system', content: 'You are a helpful Twitch Chatbot.' }];
 console.log('GPT_MODE:', GPT_MODE);
 console.log('History length:', HISTORY_LENGTH);
 console.log('OpenAI API Key:', OPENAI_API_KEY);
 console.log('Model Name:', MODEL_NAME);
 
-app.use(express.json({extended: true, limit: '1mb'}));
+app.use(express.json({ extended: true, limit: '1mb' }));
 app.use(express.static('public'));
 
 if (GPT_MODE === 'CHAT') {
@@ -168,6 +174,9 @@ app.get('/gpt/:text', async (req, res) => {
         }
 
         res.send(answer);
+
+        // Save the response to the public file.txt
+        saveResponseToFile(answer);
     } catch (error) {
         console.error('Error generating response:', error);
         res.status(500).send('An error occurred while generating the response.');
@@ -188,7 +197,22 @@ wss.on('connection', ws => {
 function notifyFileChange() {
     wss.clients.forEach(client => {
         if (client.readyState === ws.OPEN) {
-            client.send(JSON.stringify({updated: true}));
+            client.send(JSON.stringify({ updated: true }));
+        }
+    });
+}
+
+// Function to save the response in public/file.txt
+function saveResponseToFile(response) {
+    const filePath = './public/file.txt';
+
+    // Update file with the new response
+    fs.writeFile(filePath, response, 'utf8', (err) => {
+        if (err) {
+            console.error('Error saving response to file:', err);
+        } else {
+            console.log('Response saved to file.txt');
+            notifyFileChange();  // Notify clients that the file has been updated
         }
     });
 }

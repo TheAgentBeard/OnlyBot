@@ -5,7 +5,7 @@ import expressWs from 'express-ws';
 import {job} from './keep_alive.js';
 import {OpenAIOperations} from './openai_operations.js';
 import {TwitchBot} from './twitch_bot.js';
-import FTPClient from 'basic-ftp';  // Import the FTPClient from basic-ftp
+import ftp from 'basic-ftp';
 
 // Start keep alive cron job
 job.start();
@@ -140,7 +140,7 @@ bot.onMessage(async (channel, user, message, self) => {
 
 // Function to upload response to FTP server
 async function uploadResponseToFTP(response) {
-    const client = new FTPClient();
+    const client = new ftp.Client();
     try {
         await client.access({
             host: FTP_HOST,

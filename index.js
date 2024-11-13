@@ -138,7 +138,9 @@ bot.onMessage(async (channel, user, message, self) => {
     }
 });
 
-async function uploadFileToFTP(filePath) {
+
+// Funktion zum Hochladen der Antwort als Textdatei
+async function uploadResponseToFTP(response) {
     const client = new ftp.Client();
 
     try {
@@ -149,19 +151,23 @@ async function uploadFileToFTP(filePath) {
             password: process.env.FTP_PASS,
         });
 
-        // Erstelle einen Stream aus der Datei
-        const stream = fs.createReadStream(filePath);
+        // Wandelt die Antwort in einen Buffer um
+        const buffer = Buffer.from(response, 'utf-8');  // Umwandlung in Buffer
 
-        // Lade die Datei auf den FTP-Server hoch
-        await client.uploadFrom(stream, '/response.txt');  // Gib den Zielpfad an
+        // Lade die Antwort als .txt-Datei auf den FTP-Server hoch
+        await client.uploadFrom(buffer, '/reponse.txt');  // Gib den Zielpfad an
 
-        console.log('Datei erfolgreich auf den FTP-Server hochgeladen.');
+        console.log('Antwort erfolgreich auf den FTP-Server hochgeladen.');
     } catch (err) {
         console.error('Fehler beim Hochladen auf den FTP-Server:', err);
     } finally {
         client.close();
     }
 }
+
+// Beispiel für den Funktionsaufruf
+const responseText = 'Dies ist eine Antwort, die hochgeladen werden soll.';
+uploadResponseToFTP(responseText);
 
 const port = process.env.PORT || 3000;  // Nutze den Port von Render oder 3000 lokal
 

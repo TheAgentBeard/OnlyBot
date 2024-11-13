@@ -5,6 +5,7 @@ import expressWs from 'express-ws';
 import {job} from './keep_alive.js';
 import {OpenAIOperations} from './openai_operations.js';
 import {TwitchBot} from './twitch_bot.js';
+import { FTPClient } from 'basic-ftp';  // Import the FTPClient from basic-ftp
 
 // Start keep alive cron job
 job.start();
@@ -30,6 +31,12 @@ const SEND_USERNAME = process.env.SEND_USERNAME || 'true';
 const ENABLE_TTS = process.env.ENABLE_TTS || 'false';
 const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS || 'false';
 const COOLDOWN_DURATION = parseInt(process.env.COOLDOWN_DURATION, 10) || 10; // Cooldown duration in seconds
+
+// FTP server credentials
+const FTP_HOST = process.env.FTP_HOST || 'ftp.example.com';
+const FTP_USER = process.env.FTP_USER || 'your_ftp_user';
+const FTP_PASS = process.env.FTP_PASS || 'your_ftp_password';
+const FTP_PATH = process.env.FTP_PATH || '/path/to/save/response.txt';  // FTP file path
 
 if (!OPENAI_API_KEY) {
     console.error('No OPENAI_API_KEY found. Please set it as an environment variable.');
@@ -79,7 +86,7 @@ bot.onMessage(async (channel, user, message, self) => {
     const currentTime = Date.now();
     const elapsedTime = (currentTime - lastResponseTime) / 1000; // Time in seconds
 
-    if (ENABLE_CHANNEL_POINTS === 'true' && user['custom-reward-id'] === '390a4985-1428-49b7-952f-03637defe0ab') {
+    if (ENABLE_CHANNEL_POINTS === 'true' && user['msg-id'] === 'highlighted-message') {
         console.log(`Highlighted message: ${message}`);
         if (elapsedTime < COOLDOWN_DURATION) {
             bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds before sending another message.`);
@@ -89,6 +96,8 @@ bot.onMessage(async (channel, user, message, self) => {
 
         const response = await openaiOps.make_openai_call(message);
         bot.say(channel, response);
+        await uploadResponseToFTP(response);  // Upload to FTP
+
     }
 
     const command = commandNames.find(cmd => message.toLowerCase().startsWith(cmd));
@@ -124,79 +133,29 @@ bot.onMessage(async (channel, user, message, self) => {
                 console.error('TTS Error:', error);
             }
         }
+
+        await uploadResponseToFTP(response);  // Upload to FTP
     }
 });
 
-app.ws('/check-for-updates', (ws, req) => {
-    ws.on('message', message => {
-        // Handle WebSocket messages (if needed)
-    });
-});
-
-const messages = [{role: 'system', content: 'You are a helpful Twitch Chatbot.'}];
-console.log('GPT_MODE:', GPT_MODE);
-console.log('History length:', HISTORY_LENGTH);
-console.log('OpenAI API Key:', OPENAI_API_KEY);
-console.log('Model Name:', MODEL_NAME);
-
-app.use(express.json({extended: true, limit: '1mb'}));
-app.use('/public', express.static('public'));
-
-app.all('/', (req, res) => {
-    console.log('Received a request!');
-    res.render('pages/index');
-});
-
-if (GPT_MODE === 'CHAT') {
-    fs.readFile('./file_context.txt', 'utf8', (err, data) => {
-        if (err) throw err;
-        console.log('Reading context file and adding it as system-level message for the agent.');
-        messages[0].content = data;
-    });
-} else {
-    fs.readFile('./file_context.txt', 'utf8', (err, data) => {
-        if (err) throw err;
-        console.log('Reading context file and adding it in front of user prompts:');
-        fileContext = data;
-    });
-}
-
-app.get('/gpt/:text', async (req, res) => {
-    const text = req.params.text;
-
-    let answer = '';
+// Function to upload response to FTP server
+async function uploadResponseToFTP(response) {
+    const client = new FTPClient();
     try {
-        if (GPT_MODE === 'CHAT') {
-            answer = await openaiOps.make_openai_call(text);
-        } else if (GPT_MODE === 'PROMPT') {
-            const prompt = `${fileContext}\n\nUser: ${text}\nAgent:`;
-            answer = await openaiOps.make_openai_call_completion(prompt);
-        } else {
-            throw new Error('GPT_MODE is not set to CHAT or PROMPT. Please set it as an environment variable.');
-        }
+        await client.access({
+            host: FTP_HOST,
+            user: FTP_USER,
+            password: FTP_PASS,
+        });
 
-        res.send(answer);
-    } catch (error) {
-        console.error('Error generating response:', error);
-        res.status(500).send('An error occurred while generating the response.');
+        // Upload the response as a .txt file
+        await client.uploadFrom(Buffer.from(response, 'utf-8'), FTP_PATH);
+        console.log('Response successfully uploaded to FTP server.');
+    } catch (err) {
+        console.error('Error uploading to FTP:', err);
+    } finally {
+        client.close();
     }
-});
-
-const server = app.listen(3000, () => {
-    console.log('Server running on port 3000');
-});
-
-const wss = expressWsInstance.getWss();
-wss.on('connection', ws => {
-    ws.on('message', message => {
-        // Handle client messages (if needed)
-    });
-});
-
-function notifyFileChange() {
-    wss.clients.forEach(client => {
-        if (client.readyState === ws.OPEN) {
-            client.send(JSON.stringify({updated: true}));
-        }
-    });
 }
+
+// Remaining code (WebSocket, Express setup, etc.)

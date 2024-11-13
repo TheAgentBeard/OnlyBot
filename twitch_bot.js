@@ -92,6 +92,7 @@ export class TwitchBot {
             // Request to ElevenLabs API to generate speech from text
             const response = await axios.post('https://api.elevenlabs.io/v1/text-to-speech/' + this.voiceID, {
                 text: text,
+                language: 'de',  // Falls nötig, um explizit Deutsch anzugeben
                 voice_settings: {
                     stability: 0.75,
                     similarity: 0.75

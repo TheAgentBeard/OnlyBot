@@ -14,9 +14,6 @@ console.log(process.env);
 const app = express();
 const expressWsInstance = expressWs(app);
 
-// Set the view engine to ejs
-app.set('view engine', 'txt');
-
 // Load environment variables
 const GPT_MODE = process.env.GPT_MODE || 'CHAT';
 const HISTORY_LENGTH = process.env.HISTORY_LENGTH || 5;
@@ -140,7 +137,7 @@ console.log('OpenAI API Key:', OPENAI_API_KEY);
 console.log('Model Name:', MODEL_NAME);
 
 app.use(express.json({extended: true, limit: '1mb'}));
-app.use('/public', express.static('public'));
+app.use(express.static('public'));
 
 if (GPT_MODE === 'CHAT') {
     fs.readFile('./file_context.txt', 'utf8', (err, data) => {

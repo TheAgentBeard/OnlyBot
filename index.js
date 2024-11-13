@@ -11,7 +11,6 @@ job.start();
 console.log(process.env);
 
 // Setup express app
-const express = require('express');
 const cors = require('cors');
 const app = express();
 const expressWsInstance = expressWs(app);

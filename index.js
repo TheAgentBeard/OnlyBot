@@ -15,13 +15,12 @@ console.log(process.env);
 const app = express();
 const expressWsInstance = expressWs(app);
 
-// Enable CORS for all origins (or specify a specific origin)
-// app.use(cors()); // Dies erlaubt allen Ursprüngen (Origins) den Zugriff
-
-//Alternativ kannst du auch spezifische Ursprünge zulassen:
- app.use(cors({
-     origin: 'https://twitch-chatgpt-bot-zrhq.onrender.com/'
-}));
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");  // Alle Ursprünge zulassen
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  next();
+});
 
 
 // Load environment variables

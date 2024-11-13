@@ -5,7 +5,7 @@ import expressWs from 'express-ws';
 import {job} from './keep_alive.js';
 import {OpenAIOperations} from './openai_operations.js';
 import {TwitchBot} from './twitch_bot.js';
-import { FTPClient } from 'basic-ftp';  // Import the FTPClient from basic-ftp
+import FTPClient from 'basic-ftp'; 
 
 // Start keep alive cron job
 job.start();

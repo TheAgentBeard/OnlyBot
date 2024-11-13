@@ -15,7 +15,7 @@ const app = express();
 const expressWsInstance = expressWs(app);
 
 // Set the view engine to ejs
-app.set('view engine', 'ejs');
+app.set('view engine', 'txt');
 
 // Load environment variables
 const GPT_MODE = process.env.GPT_MODE || 'CHAT';

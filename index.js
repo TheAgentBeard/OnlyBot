@@ -33,10 +33,10 @@ const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS || 'false';
 const COOLDOWN_DURATION = parseInt(process.env.COOLDOWN_DURATION, 10) || 10; // Cooldown duration in seconds
 
 // FTP server credentials
-const FTP_HOST = process.env.FTP_HOST || 'ftp.example.com';
-const FTP_USER = process.env.FTP_USER || 'your_ftp_user';
-const FTP_PASS = process.env.FTP_PASS || 'your_ftp_password';
-const FTP_PATH = process.env.FTP_PATH || '/path/to/save/response.txt';  // FTP file path
+const FTP_HOST = process.env.FTP_HOST || 'theagentbeard.de';
+const FTP_USER = process.env.FTP_USER || 'f016fdcf';
+const FTP_PASS = process.env.FTP_PASS || 'xysxxi2ztiBsHHYKkWfh';
+const FTP_PATH = process.env.FTP_PATH || '/response.txt';  // FTP file path
 
 if (!OPENAI_API_KEY) {
     console.error('No OPENAI_API_KEY found. Please set it as an environment variable.');
@@ -86,7 +86,7 @@ bot.onMessage(async (channel, user, message, self) => {
     const currentTime = Date.now();
     const elapsedTime = (currentTime - lastResponseTime) / 1000; // Time in seconds
 
-    if (ENABLE_CHANNEL_POINTS === 'true' && user['msg-id'] === 'highlighted-message') {
+    if (ENABLE_CHANNEL_POINTS === 'true' && user['custom-reward-id'] === '390a4985-1428-49b7-952f-03637defe0ab') {
         console.log(`Highlighted message: ${message}`);
         if (elapsedTime < COOLDOWN_DURATION) {
             bot.say(channel, `Cooldown active. Please wait ${COOLDOWN_DURATION - elapsedTime.toFixed(1)} seconds before sending another message.`);

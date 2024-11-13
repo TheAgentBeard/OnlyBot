@@ -138,21 +138,26 @@ bot.onMessage(async (channel, user, message, self) => {
     }
 });
 
-// Function to upload response to FTP server
 async function uploadResponseToFTP(response) {
     const client = new ftp.Client();
+
     try {
+        // Stelle eine Verbindung zum FTP-Server her
         await client.access({
-            host: FTP_HOST,
-            user: FTP_USER,
-            password: FTP_PASS,
+            host: process.env.FTP_HOST,
+            user: process.env.FTP_USER,
+            password: process.env.FTP_PASS,
         });
 
-        // Upload the response as a .txt file
-        await client.uploadFrom(Buffer.from(response, 'utf-8'), FTP_PATH);
-        console.log('Response successfully uploaded to FTP server.');
+        // Wandelt die Antwort in einen Buffer um
+        const buffer = Buffer.from(response, 'utf-8');
+
+        // Lade die Antwort als .txt-Datei auf den FTP-Server hoch
+        await client.uploadFrom(buffer, process.env.FTP_PATH);
+
+        console.log('Antwort erfolgreich auf den FTP-Server hochgeladen.');
     } catch (err) {
-        console.error('Error uploading to FTP:', err);
+        console.error('Fehler beim Hochladen auf den FTP-Server:', err);
     } finally {
         client.close();
     }

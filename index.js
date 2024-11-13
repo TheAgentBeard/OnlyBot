@@ -11,6 +11,8 @@ import ftp from 'basic-ftp';
 job.start();
 console.log(process.env);
 
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Setup express app
 const app = express();
 const expressWsInstance = expressWs(app);

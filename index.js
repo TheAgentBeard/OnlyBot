@@ -11,8 +11,18 @@ job.start();
 console.log(process.env);
 
 // Setup express app
+const express = require('express');
+const cors = require('cors');
 const app = express();
 const expressWsInstance = expressWs(app);
+
+// Enable CORS for all origins (or specify a specific origin)
+// app.use(cors()); // Dies erlaubt allen Ursprüngen (Origins) den Zugriff
+
+//Alternativ kannst du auch spezifische Ursprünge zulassen:
+ app.use(cors({
+     origin: 'https://twitch-chatgpt-bot-zrhq.onrender.com/'
+}));
 
 
 // Load environment variables

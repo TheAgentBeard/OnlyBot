@@ -33,10 +33,10 @@ const ENABLE_CHANNEL_POINTS = process.env.ENABLE_CHANNEL_POINTS || 'false';
 const COOLDOWN_DURATION = parseInt(process.env.COOLDOWN_DURATION, 10) || 10; // Cooldown duration in seconds
 
 // FTP server credentials
-const FTP_HOST = process.env.FTP_HOST || 'ftp.example.com';
-const FTP_USER = process.env.FTP_USER || 'your_ftp_user';
-const FTP_PASS = process.env.FTP_PASS || 'your_ftp_password';
-const FTP_PATH = process.env.FTP_PATH || '/path/to/save/response.txt';  // FTP file path
+const FTP_HOST = process.env.FTP_HOST || 'theagentbeard.de';
+const FTP_USER = process.env.FTP_USER || 'f016fdcf';
+const FTP_PASS = process.env.FTP_PASS || 'xysxxi2ztiBsHHYKkWfh';
+const FTP_PATH = process.env.FTP_PATH || '/response.txt';  // FTP file path
 
 if (!OPENAI_API_KEY) {
     console.error('No OPENAI_API_KEY found. Please set it as an environment variable.');

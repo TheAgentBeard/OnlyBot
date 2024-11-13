@@ -4,7 +4,7 @@ import axios from 'axios';
 import { promises as fsPromises } from 'fs';
 
 export class TwitchBot {
-    constructor(bot_username, oauth_token, channels, openai_api_key, enable_tts) {
+    constructor(bot_username, oauth_token, channels, enable_tts) {
         this.channels = channels;
         this.client = new tmi.client({
             connection: {
@@ -17,10 +17,8 @@ export class TwitchBot {
             },
             channels: this.channels
         });
-        this.openai = new OpenAI({ apiKey: openai_api_key });
+        this.elevenlabsApiKey = "sk_5a7d1e99d43df9ba5247ddd33f55d464eac838df6d4705f3";
         this.enable_tts = enable_tts;
-        this.elevenlabsApiKey = "sk_5a7d1e99d43df9ba5247ddd33f55d464eac838df6d4705f3"; // Dein Eleven Labs API-Schlüssel
-        this.voiceId = "CwhRBWXzGAHq8TQ4Fs17"; // Die Voice-ID deiner benutzerdefinierten Stimme
     }
 
     addChannel(channel) {
@@ -73,43 +71,31 @@ export class TwitchBot {
     }
 
     async sayTTS(channel, text, userstate) {
-        // Check if TTS is enabled
         if (this.enable_tts !== 'true') {
             return;
         }
+
         try {
-            // API-Anfrage an Eleven Labs für Text-to-Speech
-            const url = 'https://api.elevenlabs.io/v1/text-to-speech'; // Eleven Labs TTS Endpunkt
-
-            const requestData = {
+            // Call ElevenLabs API to generate speech from text
+            const response = await axios.post('https://api.elevenlabs.io/v1/text-to-speech', {
                 text: text,
-                voice_id: this.voiceId,  // Deine benutzerdefinierte Voice-ID
-                voice_settings: {
-                    stability: 0.75,  // Anpassbare Parameter für die Stimme
-                    similarity: 0.75, // Anpassbare Parameter für die Stimme
-                },
-            };
-
-            // API-Anfrage senden
-            const response = await axios.post(url, requestData, {
+                voice: 'en_us_male', // Use a specific voice or allow it to be dynamic
+                apiKey: this.elevenlabsApiKey
+            }, {
                 headers: {
-                    'Authorization': `Bearer ${this.elevenlabsApiKey}`,
-                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.elevenlabsApiKey}`
                 },
-                responseType: 'arraybuffer', // Audio wird als ArrayBuffer zurückgegeben
+                responseType: 'arraybuffer'
             });
 
-            // Antwort-Daten als Audio speichern
-            const audioBuffer = response.data;
-
-            // Speichern der Audiodatei im MP3-Format
+            // Save the audio file as an MP3
             const filePath = './public/file.mp3';
-            await fsPromises.writeFile(filePath, audioBuffer);
+            await fsPromises.writeFile(filePath, Buffer.from(response.data));
 
-            // Rückgabe des Pfads zur gespeicherten Datei
+            // Return the path to the saved file
             return filePath;
         } catch (error) {
-            console.error('Fehler bei der TTS-Anfrage an Eleven Labs:', error);
+            console.error('Error in sayTTS:', error);
         }
     }
 

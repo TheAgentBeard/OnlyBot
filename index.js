@@ -155,7 +155,7 @@ async function uploadResponseToFTP(response) {
         const buffer = Buffer.from(response, 'utf-8');  // Umwandlung in Buffer
 
         // Lade die Antwort als .txt-Datei auf den FTP-Server hoch
-        await client.uploadFrom(buffer, '/reponse.txt');  // Gib den Zielpfad an
+        await client.uploadFrom(buffer, './test.txt');  // Gib den Zielpfad an
 
         console.log('Antwort erfolgreich auf den FTP-Server hochgeladen.');
     } catch (err) {

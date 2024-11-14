@@ -97,7 +97,7 @@ bot.onMessage(async (channel, user, message, self) => {
         //bot.say(channel, response);
 
         // Save the response to the public file.txt
-        saveResponseToFile(`${user}\nstellt schon wieder folgende Frage: ${message}\nMeine Antwort lautet: ${response}`);
+        saveResponseToFile(`${user['display-name']} hat schon wieder eine Frage: ${message} Dann antworte ich mal: ${response}`);
     }
 });
 
